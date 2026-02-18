@@ -25,59 +25,39 @@ export function ARTryOn({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      // Reset state when modal opens
-      setStep('permission');
-      setCameraGranted(false);
-      setCapturedImage(null);
+ useEffect(() => {
+  return () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-
-    const startCamera = async () => {
-      try {
-        if (step === 'camera' && videoRef.current) {
-          // Request actual camera access
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'user',
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            } 
-          });
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          toast.success('Camera activated!');
-        }
-      } catch (error) {
-        console.error('Camera error:', error);
-        toast.error('Camera access denied. Please allow camera permission.');
-        setStep('permission');
-      }
-    };
-
-    if (step === 'camera') {
-      startCamera();
-    }
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [step]);
-
-  const handleRequestPermission = () => {
-    // Simulate permission request
-    setTimeout(() => {
-      setCameraGranted(true);
-      setStep('camera');
-      toast.success('Camera permission granted!');
-    }, 1000);
   };
+}, []);
+
+ const handleRequestPermission = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    });
+
+    setCameraGranted(true);
+    setStep('camera');
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+    }
+
+    toast.success('Camera permission granted!');
+  } catch (error) {
+    console.error(error);
+    toast.error('Camera access denied');
+  }
+};
 
   const handleCapture = () => {
     if (canvasRef.current && videoRef.current) {
